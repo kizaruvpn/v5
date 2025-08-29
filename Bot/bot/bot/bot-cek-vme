@@ -1,0 +1,282 @@
+#!/bin/bash
+yellow="\033[0;33m"
+ungu="\033[0;35m"
+Red="\033[91;1m"
+Xark="\033[0m"
+BlueCyan="\033[5;36m"
+WhiteBe="\033[5;37m"
+GreenBe="\033[5;32m"
+YellowBe="\033[5;33m"
+BlueBe="\033[5;34m"
+nama=$(cat /etc/xray/username)
+echo -n > /var/log/xray/access.log
+systemctl restart xray
+sleep 5
+# Fix Data diperlukan
+dir="/etc/kyt/limit/vmess/ip"
+dir1="/etc/limit/vmess/"
+
+[[ ! -d "$dir" ]] && mkdir -p "$dir"
+[[ ! -d "$dir1" ]] && mkdir -p "$dir1"
+
+data5=( $(grep '###' /etc/xray/config.json | cut -d ' ' -f 2 | sort -u) )
+
+for akun in "${data5[@]}"
+do
+    [[ ! -e /etc/kyt/limit/vmess/ip/$akun ]] && echo "2" > /etc/kyt/limit/vmess/ip/$akun
+    [[ ! -e /etc/vmess/$akun ]] && echo "107374182400" > /etc/vmess/$akun
+    [[ ! -e /etc/limit/vmess/$akun ]] && echo "0" > /etc/limit/vmess/$akun
+done >/dev/null 2>&1
+dir2="/etc/kyt/limit/vless/ip"
+dir3="/etc/limit/vless/"
+
+[[ ! -d "$dir2" ]] && mkdir -p "$dir2"
+[[ ! -d "$dir3" ]] && mkdir -p "$dir3"
+
+data6=( $(grep '#&' /etc/xray/config.json | cut -d ' ' -f 2 | sort -u) )
+
+for akun in "${data6[@]}"
+do
+    [[ ! -e /etc/kyt/limit/vless/ip/$akun ]] && echo "2" > /etc/kyt/limit/vless/ip/$akun
+    [[ ! -e /etc/vless/$akun ]] && echo "107374182400" > /etc/vless/$akun
+    [[ ! -e /etc/limit/vless/$akun ]] && echo "0" > /etc/limit/vless/$akun
+done >/dev/null 2>&1
+
+dir4="/etc/kyt/limit/trojan/ip"
+dir5="/etc/limit/trojan"
+
+[[ ! -d "$dir1" ]] && mkdir -p "$dir1"
+[[ ! -d "$dir2" ]] && mkdir -p "$dir2"
+
+data7=( $(grep '#!' /etc/xray/config.json | cut -d ' ' -f 2 | sort -u) )
+
+for akun in "${data7[@]}"
+do
+    [[ ! -e /etc/kyt/limit/trojan/ip/$akun ]] && echo "2" > /etc/kyt/limit/trojan/ip/$akun
+    [[ ! -e /etc/trojan/$akun ]] && echo "107374182400" > /etc/trojan/$akun
+    [[ ! -e /etc/limit/trojan/$akun ]] && echo "0" > /etc/limit/trojan/$akun
+done >/dev/null 2>&1
+
+# . Liner 
+function baris_panjang() {
+  echo -e " ◇━━━━━━━━━━━━━━━━━◇  "
+}
+
+function Newbie_Banner() {
+clear
+baris_panjang
+echo -e "            $nama       "
+baris_panjang
+}
+
+function Sc_Credit(){
+sleep 1
+baris_panjang
+echo -e "  Terimakasih Telah Menggunakan "
+echo -e "          Script Credit "
+echo -e "        $nama "
+baris_panjang
+exit 1
+}
+
+duration=3
+frames=("██10%" "█████35%" "█████████65%" "█████████████80%" "█████████████████████90%" "█████████████████████████100%")
+
+# Menghitung jumlah frame
+num_frames=${#frames[@]}
+
+# Menghitung jumlah iterasi
+num_iterations=$((duration))
+
+# Fungsi untuk menampilkan animasi loading berwarna
+
+Loading_Animasi() {
+    for ((i = 0; i < num_iterations; i++)); do
+        clear
+        index=$((i % num_frames))
+        color_code=$((31 + i % 7))
+echo ""
+echo ""
+echo ""
+echo -e "\e[1;${color_code}m ${frames[$index]}\e[0m"
+sleep 0.5
+    done
+}
+
+# Menjalankan animasi loading
+
+# Menampilkan pesan setelah animasi selesai
+function Loading_Succes() {
+clear
+echo -e  "\033[5;32mSucces\033[0m"
+sleep 1
+clear
+}
+
+
+function con() {
+    local -i bytes=$1;
+    if [[ $bytes -lt 1024 ]]; then
+        echo "${bytes}B"
+    elif [[ $bytes -lt 1048576 ]]; then
+        echo "$(( (bytes + 1023)/1024 ))KB"
+    elif [[ $bytes -lt 1073741824 ]]; then
+        echo "$(( (bytes + 1048575)/1048576 ))MB"
+    else
+        echo "$(( (bytes + 1073741823)/1073741824 ))GB"
+    fi
+}
+clear
+# Membersihkan file sementara
+> /tmp/other.txt
+> /tmp/ipvmess.txt
+
+# Mengambil daftar akun dari file config.json
+data=( $(cat /etc/xray/config.json | grep '###' | cut -d ' ' -f 2 | sort | uniq) )
+
+# Menampilkan banner dan garis
+Newbie_Banner
+baris_panjang
+echo -e "           CHECK VMESS  "
+baris_panjang
+echo -e "    LOG \t IP    QUOTA   USER"
+baris_panjang
+echo ""
+for akun in "${data[@]}"
+do
+if [[ -z "$akun" ]]; then
+akun="tidakada"
+fi
+echo -n > /tmp/ipvmess.txt
+data2=( `cat /var/log/xray/access.log | tail -n 500 | awk -F "from " '{print $2}' | sed 's/tcp://g' | cut -d "[" -f 1 | cut -d ":" -f 1 | sort | uniq`);
+for ip in "${data2[@]}"
+do
+jum=$(cat /var/log/xray/access.log | grep -wE "$akun" | tail -n 500 | awk -F "from " '{print $2}'| sed 's/tcp://g' | cut -d ":" -f 1 | grep -w "$ip" | sort | uniq)
+if [[ "$jum" = "$ip" ]]; then
+echo "$jum" >> /tmp/ipvmess.txt
+else
+echo "$ip" >> /tmp/other.txt
+fi
+jum2=$(cat /tmp/ipvmess.txt)
+sed -i "/$jum2/d" /tmp/other.txt > /dev/null 2>&1
+done
+jum=$(cat /tmp/ipvmess.txt)
+if [[ -z "$jum" ]]; then
+echo > /dev/null
+else
+iplimit=$(cat /etc/kyt/limit/vmess/ip/${akun})
+jum2=$(cat /tmp/ipvmess.txt | wc -l)
+byte=$(cat /etc/vmess/${akun})
+lim=$(con ${byte})
+wey=$(cat /etc/limit/vmess/${akun})
+gb=$(con ${wey})
+lastlogin=$(cat /var/log/xray/access.log | grep -wE "$akun" | tail -n 500 | cut -d " " -f 2 | tail -1)
+        # Menampilkan informasi akun
+        echo -e "   $lastlogin      $jum2/$iplimit   ${lim}/${gb} ${akun}" | lolcat
+    # Membersihkan file sementara
+    rm -f /tmp/ipvmess.txt
+    fi
+done
+# Membersihkan file sementara
+rm -f /tmp/other.txt
+
+# Menampilkan garis
+baris_panjang
+echo ""
+echo ""
+> /tmp/other.txt
+> /tmp/ipvless.txt
+
+# Mengambil daftar akun dari file config.json
+data=( $(cat /etc/xray/config.json | grep '#&' | cut -d ' ' -f 2 | sort | uniq) )
+
+# Menampilkan banner dan garis
+baris_panjang
+echo -e "           CHECK VLESS  "
+baris_panjang
+echo -e "    LOG \t IP    QUOTA   USER"
+baris_panjang
+echo ""
+for akun in "${data[@]}"
+do
+if [[ -z "$akun" ]]; then
+akun="tidakada"
+fi
+echo -n > /tmp/ipvless.txt
+data2=( `cat /var/log/xray/access.log | tail -n 500 | awk -F "from " '{print $2}' | sed 's/tcp://g' | cut -d "[" -f 1 | cut -d ":" -f 1 | sort | uniq`);
+for ip in "${data2[@]}"
+do
+jum=$(cat /var/log/xray/access.log | grep -wE "$akun" | tail -n 500 | awk -F "from " '{print $2}'| sed 's/tcp://g' | cut -d ":" -f 1 | grep -w "$ip" | sort | uniq)
+if [[ "$jum" = "$ip" ]]; then
+echo "$jum" >> /tmp/ipvless.txt
+else
+echo "$ip" >> /tmp/other.txt
+fi
+jum2=$(cat /tmp/ipvless.txt)
+sed -i "/$jum2/d" /tmp/other.txt > /dev/null 2>&1
+done
+jum=$(cat /tmp/ipvless.txt)
+if [[ -z "$jum" ]]; then
+echo > /dev/null
+else
+iplimit=$(cat /etc/kyt/limit/vless/ip/${akun})
+jum2=$(cat /tmp/ipvless.txt | wc -l)
+byte=$(cat /etc/vless/${akun})
+lim=$(con ${byte})
+wey=$(cat /etc/limit/vless/${akun})
+gb=$(con ${wey})
+lastlogin=$(cat /var/log/xray/access.log | grep -wE "$akun" | tail -n 500 | cut -d " " -f 2 | tail -1)
+echo -e  "   $lastlogin      $jum2/$iplimit   ${lim}/${gb} ${akun}" | lolcat
+fi 
+rm -rf /tmp/ipvless.txt
+done
+rm -rf /tmp/other.txt
+echo ""
+echo -n > /tmp/other.txt
+data=( `cat /etc/xray/config.json | grep '^#!' | cut -d ' ' -f 2 | sort | uniq`);
+baris_panjang
+echo -e "           CHECK TROJAN   "
+baris_panjang
+echo -e "    LOG \t IP   QUOTA   USER "
+baris_panjang
+echo ""
+for akun in "${data[@]}"
+do
+if [[ -z "$akun" ]]; then
+akun="tidakada"
+fi
+echo -n > /tmp/iptrojan.txt
+data2=( `cat /var/log/xray/access.log | tail -n 500 | awk -F "from " '{print $2}' | sed 's/tcp://g' | cut -d "[" -f 1 | cut -d ":" -f 1 | sort | uniq`);
+for ip in "${data2[@]}"
+do
+jum=$(cat /var/log/xray/access.log | grep -wE "$akun" | tail -n 500 | awk -F "from " '{print $2}'| sed 's/tcp://g' | cut -d ":" -f 1 | grep -w "$ip" | sort | uniq)
+if [[ "$jum" = "$ip" ]]; then
+echo "$jum" >> /tmp/iptrojan.txt
+else
+echo "$ip" >> /tmp/other.txt
+fi
+jum2=$(cat /tmp/iptrojan.txt)
+sed -i "/$jum2/d" /tmp/other.txt > /dev/null 2>&1
+done
+jum=$(cat /tmp/iptrojan.txt)
+if [[ -z "$jum" ]]; then
+echo > /dev/null
+else
+iplimit=$(cat /etc/kyt/limit/trojan/ip/${akun})
+jum2=$(cat /tmp/iptrojan.txt | wc -l)
+byte=$(cat /etc/limit/trojan/${akun})
+lim=$(con ${byte})
+wey=$(cat /etc/trojan/${akun})
+gb=$(con ${wey})
+lastlogin=$(cat /var/log/xray/access.log | grep -wE "$akun" | tail -n 500 | cut -d " " -f 2 | tail -1)
+echo -e  "   $lastlogin      $jum2/$iplimit   ${lim}/${gb} ${akun}" | lolcat
+fi 
+rm -rf /tmp/iptrojan.txt
+done
+rm -rf /tmp/other.txt
+
+echo ""
+baris_panjang
+
+echo ""
+Sc_Credit
