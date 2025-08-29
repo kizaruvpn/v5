@@ -1,5 +1,5 @@
 ### INSTALL SCRIPT 
-<pre><code>apt update -y && apt install -y wget curl jq at screen && wget -q https://raw.githubusercontent.com/kizaruvpn/v5/main/v5.sh && chmod +x setup.sh && screen -S install ./v5.sh
+<pre><code>apt update -y && apt install -y wget curl jq at screen && wget -q https://raw.githubusercontent.com/kizaruvpn/v5/main/v5.sh && chmod +x v5.sh && screen -S install ./v5.sh
 </code></pre>
 
 ### PERINTAH UPDATE 
