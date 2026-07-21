@@ -1,67 +1,13 @@
 #!/bin/bash
-# Installer Kizaru VPN - versi stabil
-# Tidak memakai `set -e` karena beberapa komponen opsional boleh gagal,
-# tetapi kegagalan langkah penting akan dihentikan secara eksplisit.
-set -o pipefail
 export DEBIAN_FRONTEND=noninteractive
-export NEEDRESTART_MODE=a
-
-log_error() { echo -e "\033[1;31m[ERROR]\033[0m $*" >&2; }
-log_warn()  { echo -e "\033[1;33m[WARNING]\033[0m $*" >&2; }
-
-require_root() {
-    if [ "${EUID:-$(id -u)}" -ne 0 ]; then
-        log_error "Jalankan installer sebagai root."
-        exit 1
-    fi
-}
-
-retry_cmd() {
-    local attempts=5 delay=3 n=1
-    while true; do
-        "$@" && return 0
-        if [ "$n" -ge "$attempts" ]; then
-            return 1
-        fi
-        log_warn "Perintah gagal. Percobaan $n/$attempts, ulang dalam ${delay} detik..."
-        sleep "$delay"
-        n=$((n + 1))
-    done
-}
-
-download_file() {
-    local url="$1" output="$2"
-    mkdir -p "$(dirname "$output")"
-    retry_cmd wget -q --timeout=30 --tries=1 -O "$output" "$url" || {
-        log_error "Gagal mengunduh: $url"
-        return 1
-    }
-    if [ ! -s "$output" ]; then
-        log_error "File hasil unduhan kosong: $output"
-        rm -f "$output"
-        return 1
-    fi
-}
-
-fetch_text() {
-    local url="$1"
-    retry_cmd curl -fsSL --connect-timeout 15 --max-time 60 "$url"
-}
-
-require_root
-
-# Nonaktifkan IPv6 sementara bila parameter tersedia.
-if [ -w /proc/sys/net/ipv6/conf/all/disable_ipv6 ]; then
-    echo 1 > /proc/sys/net/ipv6/conf/all/disable_ipv6 || true
-fi
-
-retry_cmd apt-get update || { log_error "apt update gagal"; exit 1; }
-retry_cmd apt-get install -y --no-install-recommends \
-    ca-certificates curl wget jq at screen wondershaper ruby || {
-    log_error "Paket awal gagal dipasang"
-    exit 1
-}
-command -v gem >/dev/null 2>&1 && gem list -i lolcat >/dev/null 2>&1 || gem install lolcat --no-document || log_warn "lolcat gagal dipasang; instalasi dilanjutkan"
+echo 1 > /proc/sys/net/ipv6/conf/all/disable_ipv6
+apt install -y
+apt upgrade -y
+apt update -y
+apt install curl -y
+apt install wondershaper -y
+apt install lolcat -y
+gem install lolcat
 Green="\e[92;1m"
 RED="\033[1;31m"
 YELLOW="\033[33m"
@@ -76,12 +22,10 @@ NC='\e[0m'
 red='\e[1;31m'
 green='\e[0;32m'
 TIME=$(date '+%d %b %Y')
-ipsaya=$(fetch_text "https://ipinfo.io/ip" 2>/dev/null || true)
-mkdir -p /etc/bin
+ipsaya=$(wget -qO- ipinfo.io/ip)
 echo "$ipsaya" > /etc/bin/.ipvps
 TIMES="10"
-BOTKEY_DATA=$(fetch_text "https://raw.githubusercontent.com/kizaruvpn/v5/main/Fls/botkey" 2>/dev/null || true)
-[ -n "$BOTKEY_DATA" ] && eval "$BOTKEY_DATA" || log_warn "Konfigurasi bot Telegram tidak dapat diambil"
+eval $(wget -qO- "https://raw.githubusercontent.com/kizaruvpn/v5/main/Fls/botkey")
 URL="https://api.telegram.org/bot$KEY/sendMessage"
 clear
 export IP=$( curl -sS icanhazip.com )
@@ -228,10 +172,12 @@ echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-
 print_success "Directory Xray"
 if [[ $(cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/ID//g') == "ubuntu" ]]; then
 echo "Setup Dependencies $(cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g')"
-apt-get install -y --no-install-recommends software-properties-common
+sudo apt update -y
+apt-get install --no-install-recommends software-properties-common
 apt-get -y install haproxy
 elif [[ $(cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/ID//g') == "debian" ]]; then
 echo "Setup Dependencies For OS Is $(cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g')"
+sudo apt-get update
 apt-get -y install haproxy
 else
 echo -e " Your OS Is Not Supported ($(cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g') )"
@@ -242,7 +188,7 @@ clear
 function nginx_install() {
 if [[ $(cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/ID//g') == "ubuntu" ]]; then
 print_install "Setup nginx For OS Is $(cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g')"
-apt-get install nginx -y
+sudo apt-get install nginx -y
 elif [[ $(cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/ID//g') == "debian" ]]; then
 print_success "Setup nginx For OS Is $(cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g')"
 apt -y install nginx
@@ -253,11 +199,18 @@ fi
 function base_package() {
 clear
 print_install "Menginstall Packet Yang Dibutuhkan"
-# Paket dipasang dalam satu transaksi agar lebih cepat dan konsisten.
-apt-get install -y debconf-utils util-linux bsdmainutils
-apt-get remove --purge exim4 -y
-apt-get remove --purge ufw firewalld apache2 -y
-apt-get install -y --no-install-recommends software-properties-common
+apt install at -y
+apt install zip p7zip-full openvpn speedtest-cli pwgen openssl socat cron bash-completion -y
+apt install figlet -y
+apt dist-upgrade -y
+apt install ntpdate -y
+ntpdate pool.ntp.org
+sudo apt-get clean all
+sudo apt-get autoremove -y
+sudo apt-get install -y debconf-utils util-linux bsdmainutils
+sudo apt-get remove --purge exim4 -y
+sudo apt-get remove --purge ufw firewalld apache2 -y
+sudo apt-get install -y --no-install-recommends software-properties-common
 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections
 echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-set-selections
 apt-get -y install \
@@ -271,7 +224,7 @@ apt-get -y install \
   zlib1g-dev python3-full shc build-essential nodejs nginx php \
   php-fpm php-cli php-mysql p7zip-full squid libcurl4-openssl-dev lsb-release 
 apt purge -y apache2 stunnel4 stunnel
-systemctl enable chrony --now
+sudo systemctl enable chrony --now
 chronyc sourcestats -v
 chronyc tracking -v
 print_success "Packet Yang Dibutuhkan"
@@ -584,7 +537,7 @@ wget -O /root/.config/rclone/rclone.conf "${REPO}Cfg/rclone.conf"
 cd /bin
 git clone https://github.com/magnific0/wondershaper.git
 cd wondershaper
-make install
+sudo make install
 cd
 rm -rf wondershaper
 echo > /home/files
@@ -774,7 +727,7 @@ systemctl enable --now netfilter-persistent
 systemctl enable --now ws
 systemctl enable --now fail2ban
 systemctl enable --now udp-custom
-systemctl enable --now noobzvpns
+systemctl enable --NOW noobzvpns
 history -c
 echo "unset HISTFILE" >> /etc/profile
 cd
@@ -952,25 +905,7 @@ fi
 if ! grep -q "^net.netfilter.nf_conntrack_tcp_timeout_time_wait" "$SYSCTL_CONF"; then
     echo "$NF_CONNTRACK_TIMEOUT" >> "$SYSCTL_CONF" 2>/dev/null
 fi
-# Terapkan hanya parameter sysctl yang didukung kernel.
-apply_sysctl_if_supported() {
-    local key="$1" value="$2"
-    if sysctl -a 2>/dev/null | grep -q "^${key} ="; then
-        sysctl -w "${key}=${value}" >/dev/null 2>&1 || log_warn "Gagal menerapkan ${key}"
-    else
-        log_warn "Kernel tidak mendukung ${key}; parameter dilewati"
-        sed -i "\|^[[:space:]]*${key}[[:space:]]*=|d" "$SYSCTL_CONF" 2>/dev/null || true
-    fi
-}
-apply_sysctl_if_supported fs.file-max "$NEW_FILE_MAX"
-apply_sysctl_if_supported net.netfilter.nf_conntrack_max 262144
-apply_sysctl_if_supported net.netfilter.nf_conntrack_tcp_timeout_time_wait 30
-
-# Hapus parameter yang diketahui tidak kompatibel bila kernel menolaknya.
-if ! sysctl -a 2>/dev/null | grep -q '^net.core.netdev_budget_usecs ='; then
-    sed -i '\|^[[:space:]]*net.core.netdev_budget_usecs[[:space:]]*=|d' /etc/sysctl.conf /etc/sysctl.d/*.conf 2>/dev/null || true
-fi
-systemctl restart systemd-sysctl.service >/dev/null 2>&1 || log_warn "Sebagian pengaturan sysctl tidak dapat diterapkan"
+sysctl -p >/dev/null 2>&1
 echo ""
 history -c
 rm -rf /root/menu
@@ -980,33 +915,11 @@ rm -rf /root/LICENSE
 rm -rf /root/README.md
 rm -rf /root/domain
 secs_to_human "$(($(date +%s) - ${start}))"
-hostnamectl set-hostname $username
+sudo hostnamectl set-hostname $username
 LOCAL_IP="127.0.1.1"
 if ! grep -q "$username" /etc/hosts; then
     echo "$LOCAL_IP    $username" >> /etc/hosts
 fi
-check_critical_services() {
-    local failed=0 service
-    for service in nginx xray haproxy cron; do
-        if systemctl list-unit-files "${service}.service" >/dev/null 2>&1; then
-            if ! systemctl is-active --quiet "$service"; then
-                log_error "Service $service tidak aktif"
-                systemctl --no-pager --full status "$service" 2>/dev/null | tail -n 12 || true
-                failed=1
-            fi
-        fi
-    done
-    if [ "$failed" -ne 0 ]; then
-        log_error "Instalasi selesai tetapi ada service penting yang gagal. Periksa pesan di atas sebelum reboot."
-        return 1
-    fi
-    return 0
-}
-
-check_critical_services || {
-    read -r -p "Tekan Enter untuk tetap melanjutkan ke tahap akhir..."
-}
-
 clear
 echo -e ""
 echo -e ""
