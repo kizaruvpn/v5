@@ -1,13 +1,15 @@
 #!/bin/bash
 export DEBIAN_FRONTEND=noninteractive
 echo 1 > /proc/sys/net/ipv6/conf/all/disable_ipv6
-apt install -y
-apt upgrade -y
-apt update -y
-apt install curl -y
-apt install wondershaper -y
-apt install lolcat -y
-gem install lolcat
+# Bootstrap package manager and basic dependencies
+dpkg --configure -a
+apt-get -f install -y
+apt-get update
+apt-get install -y ca-certificates wget curl jq at screen ruby
+update-ca-certificates
+# Optional cosmetic package; installer must continue if unavailable
+apt-get install -y wondershaper lolcat >/dev/null 2>&1 || true
+gem install lolcat >/dev/null 2>&1 || true
 Green="\e[92;1m"
 RED="\033[1;31m"
 YELLOW="\033[33m"
@@ -40,7 +42,7 @@ sleep 3
 if [[ $( uname -m | awk '{print $1}' ) == "x86_64" ]]; then
 echo -e "${OK} Your Architecture Is Supported ( ${green}$( uname -m )${NC} )"
 else
-echo -e "${EROR} Your Architecture Is Not Supported ( ${YELLOW}$( uname -m )${NC} )"
+echo -e "${ERROR} Your Architecture Is Not Supported ( ${YELLOW}$( uname -m )${NC} )"
 exit 1
 fi
 if [[ $( cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/ID//g' ) == "ubuntu" ]]; then
@@ -48,11 +50,11 @@ echo -e "${OK} Your OS Is Supported ( ${green}$( cat /etc/os-release | grep -w P
 elif [[ $( cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/ID//g' ) == "debian" ]]; then
 echo -e "${OK} Your OS Is Supported ( ${green}$( cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g' )${NC} )"
 else
-echo -e "${EROR} Your OS Is Not Supported ( ${YELLOW}$( cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g' )${NC} )"
+echo -e "${ERROR} Your OS Is Not Supported ( ${YELLOW}$( cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g' )${NC} )"
 exit 1
 fi
 if [[ $ipsaya == "" ]]; then
-echo -e "${EROR} IP Address ( ${RED}Not Detected${NC} )"
+echo -e "${ERROR} IP Address ( ${RED}Not Detected${NC} )"
 else
 echo -e "${OK} IP Address ( ${green}$IP${NC} )"
 fi
@@ -172,12 +174,12 @@ echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-
 print_success "Directory Xray"
 if [[ $(cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/ID//g') == "ubuntu" ]]; then
 echo "Setup Dependencies $(cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g')"
-sudo apt update -y
+apt-get update
 apt-get install --no-install-recommends software-properties-common
 apt-get -y install haproxy
 elif [[ $(cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/ID//g') == "debian" ]]; then
 echo "Setup Dependencies For OS Is $(cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g')"
-sudo apt-get update
+apt-get update
 apt-get -y install haproxy
 else
 echo -e " Your OS Is Not Supported ($(cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g') )"
@@ -188,7 +190,7 @@ clear
 function nginx_install() {
 if [[ $(cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/ID//g') == "ubuntu" ]]; then
 print_install "Setup nginx For OS Is $(cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g')"
-sudo apt-get install nginx -y
+apt-get install nginx -y
 elif [[ $(cat /etc/os-release | grep -w ID | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/ID//g') == "debian" ]]; then
 print_success "Setup nginx For OS Is $(cat /etc/os-release | grep -w PRETTY_NAME | head -n1 | sed 's/=//g' | sed 's/"//g' | sed 's/PRETTY_NAME//g')"
 apt -y install nginx
@@ -202,21 +204,21 @@ print_install "Menginstall Packet Yang Dibutuhkan"
 apt install at -y
 apt install zip p7zip-full openvpn speedtest-cli pwgen openssl socat cron bash-completion -y
 apt install figlet -y
-apt dist-upgrade -y
+apt-get upgrade -y
 apt install ntpdate -y
 ntpdate pool.ntp.org
-sudo apt-get clean all
-sudo apt-get autoremove -y
-sudo apt-get install -y debconf-utils util-linux bsdmainutils
-sudo apt-get remove --purge exim4 -y
-sudo apt-get remove --purge ufw firewalld apache2 -y
-sudo apt-get install -y --no-install-recommends software-properties-common
+apt-get clean
+# autoremove intentionally skipped during installation to avoid removing required packages
+apt-get install -y debconf-utils util-linux bsdextrautils || apt-get install -y debconf-utils util-linux bsdmainutils
+apt-get remove --purge exim4 -y
+apt-get remove --purge ufw firewalld apache2 -y
+apt-get install -y --no-install-recommends software-properties-common
 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections
 echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-set-selections
 apt-get -y install \
   gawk iptables iptables-persistent netfilter-persistent figlet ruby libxml-parser-perl \
   squid nmap screen curl jq bzip2 gzip coreutils rsyslog iftop htop zip unzip net-tools \
-  sed gnupg gnupg1 bc apt-transport-https build-essential dirmngr libxml-parser-perl \
+  sed gnupg bc apt-transport-https build-essential dirmngr libxml-parser-perl \
   neofetch lsof openssl openvpn easy-rsa fail2ban tmux socat cron bash-completion \
   ntpdate xz-utils gnupg2 dnsutils lsb-release chrony libnss3-dev libnspr4-dev pkg-config libpam0g-dev \
   libcap-ng-dev libcap-ng-utils libselinux1-dev libcurl4-openssl-dev flex bison make \
@@ -224,7 +226,7 @@ apt-get -y install \
   zlib1g-dev python3-full shc build-essential nodejs nginx php \
   php-fpm php-cli php-mysql p7zip-full squid libcurl4-openssl-dev lsb-release 
 apt purge -y apache2 stunnel4 stunnel
-sudo systemctl enable chrony --now
+systemctl enable chrony --now
 chronyc sourcestats -v
 chronyc tracking -v
 print_success "Packet Yang Dibutuhkan"
@@ -296,7 +298,7 @@ domain=$(cat /root/domain)
 STOPWEBSERVER=$(lsof -i:80 | cut -d' ' -f1 | awk 'NR==2 {print $1}')
 rm -rf /root/.acme.sh
 mkdir /root/.acme.sh
-systemctl stop $STOPWEBSERVER
+[ -n "$STOPWEBSERVER" ] && systemctl stop "$STOPWEBSERVER" || true
 systemctl stop nginx
 curl https://acme-install.netlify.app/acme.sh -o /root/.acme.sh/acme.sh
 chmod +x /root/.acme.sh/acme.sh
@@ -422,8 +424,8 @@ cat > /etc/systemd/system/rc-local.service <<-END
 Description=/etc/rc.local
 ConditionPathExists=/etc/rc.local
 [Service]
-Type=forking
-ExecStart=/etc/rc.local start
+Type=oneshot
+ExecStart=/etc/rc.local
 TimeoutSec=0
 StandardOutput=tty
 RemainAfterExit=yes
@@ -432,6 +434,7 @@ SysVStartPriority=99
 WantedBy=multi-user.target
 END
 cat > /etc/rc.local <<-END
+#!/bin/bash
 exit 0
 END
 chmod +x /etc/rc.local
@@ -502,6 +505,8 @@ clear
 function ins_vnstat(){
 clear
 print_install "Menginstall Vnstat"
+NET=$(ip route show default 2>/dev/null | awk '/default/ {print $5; exit}')
+[ -z "$NET" ] && NET=$(ls /sys/class/net 2>/dev/null | grep -v '^lo$' | head -n1)
 apt -y install vnstat > /dev/null 2>&1
 /etc/init.d/vnstat restart
 apt -y install libsqlite3-dev > /dev/null 2>&1
@@ -537,7 +542,7 @@ wget -O /root/.config/rclone/rclone.conf "${REPO}Cfg/rclone.conf"
 cd /bin
 git clone https://github.com/magnific0/wondershaper.git
 cd wondershaper
-sudo make install
+make install
 cd
 rm -rf wondershaper
 echo > /home/files
@@ -568,12 +573,16 @@ gotop_latest="$(curl -s https://api.github.com/repos/xxxserxxx/gotop/releases | 
 gotop_link="https://github.com/xxxserxxx/gotop/releases/download/v$gotop_latest/gotop_v"$gotop_latest"_linux_amd64.deb"
 curl -sL "$gotop_link" -o /tmp/gotop.deb
 dpkg -i /tmp/gotop.deb >/dev/null 2>&1
-dd if=/dev/zero of=/swapfile bs=1024 count=1048576
-mkswap /swapfile
-chown root:root /swapfile
-chmod 0600 /swapfile >/dev/null 2>&1
-swapon /swapfile >/dev/null 2>&1
-sed -i '$ i\/swapfile      swap swap   defaults    0 0' /etc/fstab
+if ! swapon --show=NAME --noheadings 2>/dev/null | grep -qx '/swapfile'; then
+  if [ ! -f /swapfile ]; then
+    fallocate -l 1G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=1024 status=none
+  fi
+  chown root:root /swapfile
+  chmod 0600 /swapfile
+  mkswap /swapfile >/dev/null 2>&1
+  swapon /swapfile >/dev/null 2>&1 || true
+fi
+grep -qE '^/swapfile[[:space:]]' /etc/fstab || echo '/swapfile swap swap defaults 0 0' >> /etc/fstab
 chronyd -q 'server 0.id.pool.ntp.org iburst'
 chronyc sourcestats -v
 chronyc tracking -v
@@ -625,7 +634,7 @@ netfilter-persistent save
 netfilter-persistent reload
 cd
 apt autoclean -y >/dev/null 2>&1
-apt autoremove -y >/dev/null 2>&1
+# autoremove intentionally skipped during installation
 print_success "ePro WebSocket Proxy"
 
 clear
@@ -727,7 +736,7 @@ systemctl enable --now netfilter-persistent
 systemctl enable --now ws
 systemctl enable --now fail2ban
 systemctl enable --now udp-custom
-systemctl enable --NOW noobzvpns
+systemctl enable --now noobzvpns
 history -c
 echo "unset HISTFILE" >> /etc/profile
 cd
@@ -816,8 +825,8 @@ cat >/etc/systemd/system/rc-local.service <<EOF
 Description=/etc/rc.local
 ConditionPathExists=/etc/rc.local
 [Service]
-Type=forking
-ExecStart=/etc/rc.local start
+Type=oneshot
+ExecStart=/etc/rc.local
 TimeoutSec=0
 StandardOutput=tty
 RemainAfterExit=yes
@@ -866,7 +875,9 @@ make_folder_xray
 pasang_domain
 nginx_install
 base_package
-password_default
+if declare -F password_default >/dev/null 2>&1; then
+  password_default
+fi
 pasang_ssl
 install_xray
 ssh
@@ -915,7 +926,7 @@ rm -rf /root/LICENSE
 rm -rf /root/README.md
 rm -rf /root/domain
 secs_to_human "$(($(date +%s) - ${start}))"
-sudo hostnamectl set-hostname $username
+hostnamectl set-hostname $username
 LOCAL_IP="127.0.1.1"
 if ! grep -q "$username" /etc/hosts; then
     echo "$LOCAL_IP    $username" >> /etc/hosts
