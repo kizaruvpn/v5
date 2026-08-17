@@ -8,7 +8,6 @@ export PURPLE='\033[0;35m'
 export CYAN='\033[0;36m'
 export LIGHT='\033[0;37m'
 export NC='\033[0m'
-
 PATH="/usr/bin:$PATH"
 x=`basename $0`
 if test $# = 0; then
@@ -21,7 +20,6 @@ if test $# = 0; then
    echo  "${BLUE}          =============================================================${NC}"
   exit 1
 fi
-
 set -C
 tmp=gz$$
 trap "rm -f $tmp; exit 1" HUP INT QUIT TRAP USR1 PIPE TERM
@@ -41,7 +39,6 @@ if test -z "`(${CPMOD-cpmod} zfoo1$$ zfoo2$$) 2>&1`"; then
   cpmod=${CPMOD-cpmod}
 fi
 rm -f zfoo[12]$$
-
 tail=""
 IFS="${IFS= 	}"; saveifs="$IFS"; IFS="${IFS}:"
 for dir in $PATH; do
@@ -59,7 +56,6 @@ fi
 case `echo foo | $tail -n +1 2>/dev/null` in
 foo) tail="$tail -n";;
 esac
-
 for i do
   if test ! -f "$i" ; then
     echo ${x}: $i not a file
@@ -101,7 +97,7 @@ skip=23
 set -C
 umask=`umask`
 umask 77
-tmpfile=`tempfile -p gztmp -d /tmp` || exit 1
+tmpfile=$(mktemp /tmp/gztmp.XXXXXX) || exit 1
 if tail +$skip "$0" | /bin/bzip2 -cd >> $tmpfile; then
   umask $umask
   /bin/chmod 700 $tmpfile
@@ -125,7 +121,6 @@ EOF
       res=1
       continue
     }
-
   else
     # decompression
     skip=23
