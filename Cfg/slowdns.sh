@@ -1,148 +1,135 @@
 #!/bin/bash
-# ============================================================
-#  slowdns.sh (versi perbaikan) - menu 8.) Install SlowDns
-#  Meminta domain NS saat dijalankan. Tanpa verifikasi password,
-#  tanpa API Cloudflare pihak lain, tanpa reboot.
-# ============================================================
-BLUE="\033[36m"; GREEN="\e[92;1m"; NC='\e[0m'
-clear
-echo ""
-echo -e "   ${BLUE}_______________________________${NC}"
-echo -e "   ${GREEN}    WELCOME TO SLOWDNS SETUP ${NC}"
-echo -e "   ${BLUE}_______________________________${NC}"
-echo ""
+Green="\e[92;1m"
+RED="\033[1;31m"
+YELLOW="\033[33m"
+BLUE="\033[36m"
+FONT="\033[0m"
+GREENBG="\033[42;37m"
+REDBG="\033[41;37m"
+NC='\e[0m'
+REPOS="https://raw.githubusercontent.com/diah082/newbie/main/"
+ns_domain_cloudflare() {
+	DOMAIN="vpnnewbie.my.id"
+	DOMAIN_PATH=$(cat /etc/xray/domain)
+	echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+	echo -e "           Masukan Subdomain              "
+	echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}" 
+	echo "" 
+	read -p " Subdomain : " SUB
+	if [ -z $SUB ]; then
+    exit
+    else
+	SUB_DOMAIN=${SUB}."vpnnewbie.my.id"
+	NS_DOMAIN=dns.${SUB_DOMAIN}
+	CF_ID=awanwengi64@gmail.com
+        CF_KEY=78b8a042332fefd8bc3a65a57de69477e992b
+	set -euo pipefail
+	IP=$(wget -qO- ipinfo.io/ip)
+	echo "Updating DNS NS for ${NS_DOMAIN}..."
+	ZONE=$(
+		curl -sLX GET "https://api.cloudflare.com/client/v4/zones?name=${DOMAIN}&status=active" \
+		-H "X-Auth-Email: ${CF_ID}" \
+		-H "X-Auth-Key: ${CF_KEY}" \
+		-H "Content-Type: application/json" | jq -r .result[0].id
+	)
 
-REPO="${REPO:-https://raw.githubusercontent.com/kizaruvpn/v5/main/}"
-SD="${SD:-/etc/systemd/system}"          # folder unit systemd
-SLOW="${SLOW:-/etc/slowdns}"             # folder dnstt + key
-XRAY="${XRAY:-/etc/xray}"                # folder domain/dns
-BACKEND="${BACKEND:-127.0.0.1:143}"      # tujuan tunnel: dropbear (SSH polos)
-CLIENT_RESOLVER="${CLIENT_RESOLVER:-1.1.1.1:53}"
+	RECORD=$(
+		curl -sLX GET "https://api.cloudflare.com/client/v4/zones/${ZONE}/dns_records?name=${NS_DOMAIN}" \
+		-H "X-Auth-Email: ${CF_ID}" \
+		-H "X-Auth-Key: ${CF_KEY}" \
+		-H "Content-Type: application/json" | jq -r .result[0].id
+	)
 
-G="\e[92;1m"; Y="\033[33m"; B="\033[36m"; R="\033[1;31m"; N="\e[0m"
-
-mkdir -p "$SLOW" "$XRAY"
-
-# ---------- tentukan NS domain ----------
-MAIN_DOMAIN=$(cat "$XRAY/domain" 2>/dev/null)
-OLD_NS=$(cat "$XRAY/dns" 2>/dev/null)
-
-SUG=""
-if [[ -n "$MAIN_DOMAIN" ]]; then
-	SUG="ns-${MAIN_DOMAIN%%.*}.${MAIN_DOMAIN#*.}"
-fi
-
-if [[ -n "${NS_DOMAIN:-}" ]]; then
-	: # diberikan lewat environment
-elif [[ -n "$1" ]]; then
-	NS_DOMAIN="$1"
-else
-	echo -e "${B}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${N}"
-	echo -e "   ${G}SETUP SLOWDNS - MASUKKAN DOMAIN NS${N}"
-	echo -e "${B}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${N}"
-	[[ -n "$MAIN_DOMAIN" ]] && echo -e " Domain VPS      : ${Y}${MAIN_DOMAIN}${N}"
-	[[ -n "$OLD_NS" ]]      && echo -e " NS saat ini     : ${Y}${OLD_NS}${N}"
-	echo ""
-	echo -e " Buat dulu record di Cloudflare/DNS provider:"
-	echo -e "   Type NS | Name <nama-ns> | Nameserver ${Y}${MAIN_DOMAIN:-domain-vps-anda}${N}"
-	echo ""
-	read -r -p " Domain NS [${SUG}] : " NS_DOMAIN </dev/tty
-	NS_DOMAIN=${NS_DOMAIN:-$SUG}
-fi
-
-NS_DOMAIN=$(echo "$NS_DOMAIN" | tr 'A-Z' 'a-z' | tr -d '[:space:]')
-if ! [[ "$NS_DOMAIN" =~ ^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$ ]]; then
-	echo -e "${R} Domain NS tidak valid: '${NS_DOMAIN}'${N}"
-	exit 1
-fi
-
-# peringatan saja (tidak membatalkan): NS belum terbaca di DNS
-if command -v dig >/dev/null 2>&1; then
-	if [[ -z "$(dig +short NS "$NS_DOMAIN" @1.1.1.1 2>/dev/null)" ]]; then
-		echo -e "${Y} Peringatan: record NS untuk ${NS_DOMAIN} belum terbaca (mungkin belum propagasi).${N}"
+	if [[ "${#RECORD}" -le 10 ]]; then
+		RECORD=$(
+			curl -sLX POST "https://api.cloudflare.com/client/v4/zones/${ZONE}/dns_records" \
+			-H "X-Auth-Email: ${CF_ID}" \
+			-H "X-Auth-Key: ${CF_KEY}" \
+			-H "Content-Type: application/json" \
+			--data '{"type":"NS","name":"'${NS_DOMAIN}'","content":"'${DOMAIN_PATH}'","proxied":false}' | jq -r .result.id
+		)
 	fi
-fi
 
-# ---------- pasang dnstt ----------
-if [[ ! -x "$SLOW/dnstt-server" ]]; then
-	wget -q -O "$SLOW/dnstt-server" "${REPO}Fls/dnstt-server" || { echo -e "${R} Gagal unduh dnstt-server${N}"; exit 1; }
-	chmod +x "$SLOW/dnstt-server"
-fi
-if [[ ! -x "$SLOW/dnstt-client" ]]; then
-	wget -q -O "$SLOW/dnstt-client" "${REPO}Fls/dnstt-client" || { echo -e "${R} Gagal unduh dnstt-client${N}"; exit 1; }
-	chmod +x "$SLOW/dnstt-client"
-fi
-
-# key lama dipertahankan supaya public key client tidak berubah
-if [[ ! -s "$SLOW/server.key" || ! -s "$SLOW/server.pub" ]]; then
-	"$SLOW/dnstt-server" -gen-key -privkey-file "$SLOW/server.key" -pubkey-file "$SLOW/server.pub"
-fi
-
-# ---------- unit systemd ----------
-cat > "$SD/server.service" <<EOF
-[Unit]
-Description=Server SlowDNS
-After=network.target nss-lookup.target
-[Service]
-Type=simple
-User=root
-CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-NoNewPrivileges=true
-ExecStart=$SLOW/dnstt-server -udp :5300 -privkey-file $SLOW/server.key $NS_DOMAIN $BACKEND
-Restart=on-failure
-[Install]
-WantedBy=multi-user.target
-EOF
-
-cat > "$SD/client.service" <<EOF
-[Unit]
-Description=Client SlowDNS
-After=network.target nss-lookup.target
-[Service]
-Type=simple
-User=root
-CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-NoNewPrivileges=true
-ExecStart=$SLOW/dnstt-client -udp $CLIENT_RESOLVER --pubkey-file $SLOW/server.pub $NS_DOMAIN 127.0.0.1:88
-Restart=on-failure
-[Install]
-WantedBy=multi-user.target
-EOF
-
-echo "$NS_DOMAIN" > "$XRAY/dns"
-
-# ---------- firewall: UDP 53 -> 5300 (tidak dobel) ----------
-if command -v iptables >/dev/null 2>&1 && [[ -z "${SKIP_FW:-}" ]]; then
-	iptables -C INPUT -p udp --dport 5300 -j ACCEPT 2>/dev/null || iptables -I INPUT -p udp --dport 5300 -j ACCEPT
-	iptables -C INPUT -p udp --dport 53 -j ACCEPT 2>/dev/null   || iptables -I INPUT -p udp --dport 53 -j ACCEPT
-	iptables -t nat -C PREROUTING -p udp --dport 53 -j REDIRECT --to-ports 5300 2>/dev/null \
-		|| iptables -t nat -I PREROUTING -p udp --dport 53 -j REDIRECT --to-ports 5300
-	command -v netfilter-persistent >/dev/null 2>&1 && netfilter-persistent save >/dev/null 2>&1
-fi
-
-# ---------- jalankan ----------
-if [[ -z "${SKIP_SYSTEMCTL:-}" ]]; then
+	RESULT=$(
+		curl -sLX PUT "https://api.cloudflare.com/client/v4/zones/${ZONE}/dns_records/${RECORD}" \
+		-H "X-Auth-Email: ${CF_ID}" \
+		-H "X-Auth-Key: ${CF_KEY}" \
+		-H "Content-Type: application/json" \
+		--data '{"type":"NS","name":"'${NS_DOMAIN}'","content":"'${DOMAIN_PATH}'","proxied":false}'
+	)
+	echo $NS_DOMAIN >/etc/xray/dns
+	fi
+}
+setup_dnstt() {
+	cd
+	mkdir -p /etc/slowdns
+	cd /etc/slowdns
+	wget -O dnstt-server "${REPOS}slowdns/dnstt-server" >/dev/null 2>&1
+	chmod +x dnstt-server >/dev/null 2>&1
+	wget -O dnstt-client "${REPOS}slowdns/dnstt-client" >/dev/null 2>&1
+	chmod +x dnstt-client >/dev/null 2>&1
+	./dnstt-server -gen-key -privkey-file server.key -pubkey-file server.pub
+	chmod +x *
+	cd
+	wget -O /etc/systemd/system/client.service "${REPOS}slowdns/client" >/dev/null 2>&1
+	wget -O /etc/systemd/system/server.service "${REPOS}slowdns/server" >/dev/null 2>&1
+	sed -i "s/xxxx/$NS_DOMAIN/g" /etc/systemd/system/client.service 
+	sed -i "s/xxxx/$NS_DOMAIN/g" /etc/systemd/system/server.service 
 	systemctl daemon-reload
-	systemctl enable server client >/dev/null 2>&1
-	systemctl restart server client
-	sleep 1
-	if systemctl is-active --quiet server; then
-		STATUS="${G}AKTIF${N}"
-	else
-		STATUS="${R}TIDAK AKTIF (cek: journalctl -u server -n 20 --no-pager)${N}"
-	fi
+	systemctl restart server
+	systemctl restart client
+	systemctl enable server
+	systemctl enable client
+}
+print_install() {
+echo -e "${BLUE} =============================== ${FONT}"
+echo -e "${YELLOW} # $1 ${FONT}"
+echo -e "${BLUE} =============================== ${FONT}"
+sleep 1
+}
+print_success() {
+if [[ 0 -eq $? ]]; then
+echo -e "${BLUE} =============================== ${FONT}"
+echo -e "${Green} # $1 berhasil dipasang"
+echo -e "${BLUE} =============================== ${FONT}"
+sleep 2
 fi
-
+}
+setup(){
 echo ""
-echo -e "${B}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${N}"
-echo -e " NS Domain  : ${G}${NS_DOMAIN}${N}"
-echo -e " Public Key : ${G}$(cat "$SLOW/server.pub")${N}"
-echo -e " Tujuan     : ${BACKEND}"
-[[ -n "${STATUS:-}" ]] && echo -e " Service    : ${STATUS}"
-echo -e "${B}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${N}"
-
 echo ""
-read -r -p " Tekan Enter untuk kembali ke menu..." _ </dev/tty
-command -v menu >/dev/null 2>&1 && menu
+echo -e "   ${BLUE}_______________________________$NC"
+echo -e "   \e[1;32m    WELCOME TO SLOWDNS SETUP $NC"
+echo -e "   ${BLUE}_______________________________$NC"
+echo ""
+read -p "   VERIFIKASI ADMIN :   " host11
+if [[ $host11 = 123@Newbie ]]; then
+clear
+ns_domain_cloudflare
+setup_dnstt
+echo ""
+rm -rf slowdns.sh
+clear
+print_success "SETUP SLOWDNS YOUR SERVER"
+sleep 2
+menu
+else
+clear
+    echo -e "\033[1;93m────────────────────────────────────────────\033[0m"
+    echo -e "\033[42m          404 NOT FOUND AUTOSCRIPT          \033[0m"
+    echo -e "\033[1;93m────────────────────────────────────────────\033[0m"
+    echo ""
+    echo -e "            \033[91;1mPERMISSION DENIED !\033[0m"
+    echo -e "     \033[0;33mBuy access permissions for scripts\033[0m"
+    echo -e "             \033[0;33mContact Admin :\033[0m"
+    echo -e "      \033[2;32mWhatsApp\033[0m wa.me/6282326322300"
+	echo -e "      \033[2;32mTelegram\033[0m t.me/Newbie_Store24"
+    echo -e "\033[1;93m────────────────────────────────────────────\033[0m"
+	echo ""
+	echo -e "	\033[0;33mBersiap Mematikan Server Dalam 3 Detik\033[0m"
+    sleep 3
+	rm -rf slowdns.sh
+    reboot
+fi
+}
+setup
