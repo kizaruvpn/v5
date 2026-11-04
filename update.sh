@@ -36,6 +36,7 @@ wget https://raw.githubusercontent.com/kizaruvpn/v5/main/Cdy/menu.zip
 7z x -pHeyHeyMauDecryptYaAwokawok menu.zip
 chmod +x menu/*
 mv menu/* /usr/local/sbin
+wget -q -O /usr/local/sbin/slowdns https://raw.githubusercontent.com/kizaruvpn/v5/main/Cfg/slowdns.sh && chmod +x /usr/local/sbin/slowdns
 rm -rf menu
 rm -rf menu.zip
 fixsysctl
