@@ -42,11 +42,10 @@ if [ -f "/etc/slowdns/install.sh" ] && [ -f "/etc/slowdns/slowdns.env" ]; then
     echo "Slowdns Sudah Terinstall"
 else
     echo "Slowdns Belum Terpasang"
-wget -q -O /tmp/nameserver "https://raw.githubusercontent.com/kizaruvpn/v5/main/Cfg/slowdns.sh" >/dev/null 2>&1
+wget -q -O /tmp/nameserver "https://raw.githubusercontent.com/kizaruvpn/v5/main/Cfg/slowdns.sh"
 chmod +x /tmp/nameserver
-./tmp/nameserver
+/tmp/nameserver
 fi
-fixsysctl
 }
 netfilter-persistent
 clear
@@ -59,6 +58,7 @@ fun_bar 'res1'
 echo -e "\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
 echo -e ""
 read -n 1 -s -r -p "Press [ Enter ] to back on menu"
+rm -f "$0"
 menu
 
 ###########- COLOR CODE -##############
