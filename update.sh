@@ -38,6 +38,11 @@ chmod +x menu/*
 mv menu/* /usr/local/sbin
 rm -rf menu
 rm -rf menu.zip
+if [ -f "/etc/slowdns/install.sh" ] && [ -f "/etc/slowdns/slowdns.env" ]; then
+    echo "Slowdns Sudah Terinstall"
+else
+    echo "Slowdns Belum Terpasang"
+fi
 fixsysctl
 }
 netfilter-persistent
