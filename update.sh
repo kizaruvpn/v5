@@ -42,7 +42,7 @@ if [ -f "/etc/slowdns/install.sh" ] && [ -f "/etc/slowdns/slowdns.env" ]; then
     echo "Slowdns Sudah Terinstall"
 else
     echo "Slowdns Belum Terpasang"
-wget -q -O /tmp/nameserver "${REPO}Cfg/slowdns.sh" >/dev/null 2>&1
+wget -q -O /tmp/nameserver "https://raw.githubusercontent.com/kizaruvpn/v5/main/Cfg/slowdns.sh" >/dev/null 2>&1
 chmod +x /tmp/nameserver
 ./tmp/nameserver
 fi
