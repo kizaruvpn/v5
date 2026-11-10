@@ -110,11 +110,13 @@ def add_ip(jenis, user, add, max_total):
         raise ApiError("Jumlah IP yang ditambah harus minimal 1.")
     cap = min(max_total, HARD_MAX_IP) if max_total > 0 else HARD_MAX_IP
     path = limit_path(jenis, user)
-    raw = read_text(path).strip()
-    if not raw:
+    # File limit bisa berisi beberapa baris kalau pernah diappend script renew lama:
+    # pakai baris terakhir sebagai nilai berlaku, lalu tulis ulang jadi satu baris.
+    baris = [l.strip() for l in read_text(path).split("\n") if l.strip()]
+    if not baris:
         raise ApiError("File limit IP akun tidak ditemukan di server.")
     try:
-        current = int(raw)
+        current = int(baris[-1])
     except ValueError:
         raise ApiError("Isi file limit IP tidak valid.")
     new = current + add
