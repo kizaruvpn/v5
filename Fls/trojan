@@ -38,6 +38,8 @@ function con() {
   fi
   for user in ${data[@]}
   do        downlink=$(xray api stats --server=127.0.0.1:10000 -name "user>>>${user}>>>traffic>>>downlink" | grep -w "value" | awk '{print $2}' | cut -d '"' -f2);
+        downlink=${downlink//[^0-9]/}; downlink=${downlink:-0}
+        [[ ! -e /etc/limit/trojan/${user} ]] && echo "0" > /etc/limit/trojan/${user}
         if [ -e /etc/limit/trojan/${user} ]; then
         plus2=$(cat /etc/limit/trojan/${user});
         if [[ ${plus2} -gt 0 ]]; then
