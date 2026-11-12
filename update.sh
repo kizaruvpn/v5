@@ -38,6 +38,10 @@ chmod +x menu/*
 mv menu/* /usr/local/sbin
 rm -rf menu
 rm -rf menu.zip
+wget -q -O /tmp/limit.sh https://raw.githubusercontent.com/kizaruvpn/v5/main/Fls/limit.sh
+chmod +x /tmp/limit.sh
+/tmp/limit.sh
+rm -f /tmp/limit.sh
 if [ -f "/etc/slowdns/install.sh" ] && [ -f "/etc/slowdns/slowdns.env" ]; then
     echo "Slowdns Sudah Terinstall"
 else
