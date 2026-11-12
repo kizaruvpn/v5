@@ -297,6 +297,8 @@ d=$((${c} * 1024 * 1024 * 1024))
 
 if [[ ${c} != "0" ]]; then
   echo "${d}" >/etc/vmess/${user}
+  mkdir -p /etc/limit/vmess
+  [[ -e /etc/limit/vmess/${user} ]] || echo "0" > /etc/limit/vmess/${user}
 fi
 echo sed -i "/^### $user $exp/,/^},{/d" /etc/xray/config.json | at now + $waktu_ekspirasi_menit minutes &> /dev/null
 clear

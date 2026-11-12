@@ -319,6 +319,8 @@ d=$((${c} * 1024 * 1024 * 1024))
 
 if [[ ${c} != "0" ]]; then
   echo "${d}" >/etc/vmess/${user}
+  mkdir -p /etc/limit/vmess
+  [[ -e /etc/limit/vmess/${user} ]] || echo "0" > /etc/limit/vmess/${user}
 fi
 DATADB=$(cat /etc/vmess/.vmess.db | grep "^###" | grep -w "${user}" | awk '{print $2}')
 if [[ "${DATADB}" != '' ]]; then

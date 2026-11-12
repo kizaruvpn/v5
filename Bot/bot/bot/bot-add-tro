@@ -229,6 +229,8 @@ d=$((${c} * 1024 * 1024 * 1024))
 
 if [[ ${c} != "0" ]]; then
   echo "${d}" >/etc/trojan/${user}
+  mkdir -p /etc/limit/trojan
+  [[ -e /etc/limit/trojan/${user} ]] || echo "0" > /etc/limit/trojan/${user}
 fi
 DATADB=$(cat /etc/trojan/.trojan.db | grep "^###" | grep -w "${user}" | awk '{print $2}')
 if [[ "${DATADB}" != '' ]]; then

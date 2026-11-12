@@ -193,6 +193,8 @@ d=$((${c} * 1024 * 1024 * 1024))
 
 if [[ ${c} != "0" ]]; then
   echo "${d}" >/etc/vless/${user}
+  mkdir -p /etc/limit/vless
+  [[ -e /etc/limit/vless/${user} ]] || echo "0" > /etc/limit/vless/${user}
 fi
 DATADB=$(cat /etc/vless/.vless.db | grep "^###" | grep -w "${user}" | awk '{print $2}')
 if [[ "${DATADB}" != '' ]]; then

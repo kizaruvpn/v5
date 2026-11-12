@@ -275,6 +275,8 @@ d=$((${c} * 1024 * 1024 * 1024))
 
 if [[ ${c} != "0" ]]; then
   echo "${d}" >/etc/vless/${user}
+  mkdir -p /etc/limit/vless
+  [[ -e /etc/limit/vless/${user} ]] || echo "0" > /etc/limit/vless/${user}
 fi
 echo sed -i '/\bTrial-VL\b/,/^},{/d' /etc/xray/config.json | at now + $waktu_ekspirasi_menit minutes &> /dev/null
 clear

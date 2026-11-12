@@ -250,6 +250,8 @@ d=$((${c} * 1024 * 1024 * 1024))
 
 if [[ ${c} != "0" ]]; then
   echo "${d}" >/etc/trojan/${user}
+  mkdir -p /etc/limit/trojan
+  [[ -e /etc/limit/trojan/${user} ]] || echo "0" > /etc/limit/trojan/${user}
 fi
 echo sed -i "/^#! $user $exp/,/^},{/d" /etc/xray/config.json | at now + $waktu_ekspirasi_menit minutes &> /dev/null
 clear
